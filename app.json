@@ -1,10 +1,11 @@
 {
   "expo": {
-    "name": "BaseProject",
-    "slug": "BaseProject",
+    "sdkVersion": "38.0.0",
+    "name": "Усредняйло",
+    "slug": "Usrednyailo",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./bad-investment.png",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
@@ -19,8 +20,8 @@
     "ios": {
       "supportsTablet": true
     },
-    "web": {
-      "favicon": "./assets/favicon.png"
+    "android": {
+      "package": "from.school21.with.love"
     }
   }
 }
