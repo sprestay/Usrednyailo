@@ -19,6 +19,11 @@ export const Main = (props) => {
     const [avg_amount, setAvgAmount] = useState(0);
     const [current, setCurrent] = useState(0);
     const [avg, setAvg] = useState(calculate_avg());
+
+    const [edit_avg, setEditAvg] = useState(false);
+    const [tmp_avg, setTmpAvg] = useState(0);
+    const [comma, setComma] = useState(false); //Флаг, ввел ли пользователь точку/запятую. Так как parseFloat ее забывает, а рассчеты нужны
+
     const [refresh, setRefresh] = useState(false);
 
     // Данная конструкция - аналоги componentWillUpdate. Мы не можем вызывать функцию 
@@ -47,23 +52,32 @@ export const Main = (props) => {
         }
 
         if (!isNaN(val) && val > 0) {
+            // Муки с разделителем 
+            if (val[val.length - 1] == '.' || val[val.length - 1] == ',') //если пользователь ввел десятичный знак, запоминаем
+                setComma(true);
+            if (comma)
+                setComma(false);
+
             if (t == 'avg_amount')
                 setAvgAmount(parseInt(val, 10));
-            else if (t == 'price')
-                setPrice(parseFloat(val, 10));
+            else if (t == 'price') //берем остаток от деления на 10 (последняя цифра), плюсуем целой части от деления
+                setPrice(comma ? (Math.trunc(parseFloat(val, 10) / 10) + (parseFloat(val, 10) % 10) / 10) : parseFloat(val, 10));
             else if (t == 'amount')
                 setAmount(parseInt(val, 10));
             else if (t == 'current')
-                setCurrent(parseFloat(val, 10));
+                setCurrent(comma ? (Math.trunc(parseFloat(val, 10) / 10) + (parseFloat(val, 10) % 10) / 10) : parseFloat(val, 10));
         }
     }
 
 // Изменяя среднюю цену - изменяем необходимое количество акций
     const set_avg = (val) => {
         if (!isNaN(val) && price > 0 && amount > 0 && current > 0) {
-            let value = (price * amount - parseFloat(val, 10) * amount) / (current - parseFloat(val, 10));
-            setAvgAmount(-1 * Math.round(value));
-            setAvg(parseFloat(val, 10));
+            val = parseFloat(val, 10);
+            if (val > Math.min(price, current) && val <= Math.max(price, current)) {
+                let value = (price * amount - val * amount) / (current - val);
+                setAvgAmount(-1 * Math.round(value));
+            }
+            setTmpAvg(parseFloat(val, 10));
         }
     }
 
@@ -75,6 +89,7 @@ export const Main = (props) => {
         setCurrent(0);
         setAvgAmount(0);
         setAvg(calculate_avg());
+        setEditAvg(false);
         setRefresh(false);
     }
 
@@ -84,6 +99,14 @@ export const Main = (props) => {
         refreshControl={<RefreshControl refreshing={refresh}
                                         onRefresh={handleRefresh} />}>
         <View style={styles.main_component}>
+
+            <View>
+                <Text style={styles.total_text_header}>Total position in share:</Text>
+                <Text style={styles.total_text}>{
+                    price && amount && avg_amount && current ? (price * amount + avg_amount * current).toFixed(2) : (price && amount ? (price * amount).toFixed(2) : '-/-')
+                }</Text>
+            </View>
+
             <View style={styles.previous_data}>
                 <TextInput
                     style={styles.price}
@@ -106,8 +129,13 @@ export const Main = (props) => {
             <View>
                 <TextInput
                 style={styles.avg}
-                value={avg > 0 ? avg.toString() : '-/-'}
+                value={edit_avg ? (tmp_avg > 0 ? tmp_avg.toString() : '') : (avg > 0 ? avg.toString() : '-/-')}
                 onChangeText={(val) => set_avg(val)}
+                onFocus={() => setEditAvg(true)}
+                onBlur={() => {
+                    setEditAvg(false);
+                    setTmpAvg(0);
+                }}
                 editable={amount && price && current ? true : false}
                 keyboardType={'phone-pad'}
                 />
@@ -118,7 +146,7 @@ export const Main = (props) => {
         <View style={styles.avg_block}>
 
                 <Text style={styles.it_will_cost}>
-                    It will cost you: {avg_amount && current ? (avg_amount * current).toString() : '-/-'}
+                    It will cost you: {avg_amount && current ? (avg_amount * current).toFixed(2).toString() : '-/-'}
                 </Text>
 
                 <View style={styles.current}>
@@ -162,7 +190,7 @@ export const Main = (props) => {
 
 const styles = StyleSheet.create({
     main_component: {
-        paddingTop: 100,
+        paddingTop: 80,
         paddingHorizontal: 20,
         height: 450,
     },
@@ -254,5 +282,19 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         color: 'darkblue',
         top: -10,
+    },
+
+    total_text: {
+        textAlign: 'center',
+        color: '#00CC00',
+        fontSize: 20,
+        marginTop: 10,
+    },
+
+    total_text_header: {
+        textAlign: 'center',
+        fontSize: 23,
+        fontWeight: 'bold',
+        color: "#00CC00",
     }
 })
