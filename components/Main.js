@@ -6,25 +6,27 @@ import Slider from '@react-native-community/slider';
 export const Main = (props) => {
 
     const calculate_avg = () => {
-        if (price && amount && avg_amount && current) {
-            let a = (price * amount + avg_amount * current) / (avg_amount + amount)
-            return a.toFixed(2);
-        } else if (price) {
+        let _price = Number(price);
+        let _current = Number(current);
+
+        if (_price && amount && avg_amount && _current) {
+            let a = (_price * amount + avg_amount * _current) / (avg_amount + amount)
+            return a.toFixed(2).toString();
+        } else if (_price) {
             return price;
-        } else return 0;
+        } else return '';
     }
 
-    const [price, setPrice] = useState(0);
+    const [price, setPrice] = useState(''); //Данные хранятся строкой, чтобы легче было учитывать десятичные дроби
     const [amount, setAmount] = useState(0);
     const [avg_amount, setAvgAmount] = useState(0);
-    const [current, setCurrent] = useState(0);
+    const [current, setCurrent] = useState('');
     const [avg, setAvg] = useState(calculate_avg());
 
     const [edit_avg, setEditAvg] = useState(false);
-    const [tmp_avg, setTmpAvg] = useState(0);
-    const [comma, setComma] = useState(false); //Флаг, ввел ли пользователь точку/запятую. Так как parseFloat ее забывает, а рассчеты нужны
-
-    const [refresh, setRefresh] = useState(false);
+    const [tmp_avg, setTmpAvg] = useState('');
+    
+    const [refresh, setRefresh] = useState(false); // Для обновления компонента
 
     // Данная конструкция - аналоги componentWillUpdate. Мы не можем вызывать функцию 
     // calculate_avg в функции set_number, так как тогда при вычислении будут использоваться еще не измененные переменные
@@ -42,57 +44,65 @@ export const Main = (props) => {
             if (t == 'avg_amount') 
                 setAvgAmount(0);
             else if (t == 'price')
-                setPrice(0);
+                setPrice('');
             else if (t == 'amount')
                 setAmount(0);
             else if (t == 'current')
-                setCurrent(0);
+                setCurrent('');
 
             return;
         }
 
-        if (!isNaN(val) && val > 0) {
-            // Муки с разделителем 
-            if (val[val.length - 1] == '.' || val[val.length - 1] == ',') //если пользователь ввел десятичный знак, запоминаем
-                setComma(true);
-            if (comma)
-                setComma(false);
-
+        if (!isNaN(val) && Number(val) > 0) {
             if (t == 'avg_amount')
                 setAvgAmount(parseInt(val, 10));
-            else if (t == 'price') //берем остаток от деления на 10 (последняя цифра), плюсуем целой части от деления
-                setPrice(comma ? (Math.trunc(parseFloat(val, 10) / 10) + (parseFloat(val, 10) % 10) / 10) : parseFloat(val, 10));
+            else if (t == 'price')
+                setPrice(val);
             else if (t == 'amount')
                 setAmount(parseInt(val, 10));
             else if (t == 'current')
-                setCurrent(comma ? (Math.trunc(parseFloat(val, 10) / 10) + (parseFloat(val, 10) % 10) / 10) : parseFloat(val, 10));
+                setCurrent(val);
         }
     }
 
 // Изменяя среднюю цену - изменяем необходимое количество акций
     const set_avg = (val) => {
-        if (!isNaN(val) && price > 0 && amount > 0 && current > 0) {
-            val = parseFloat(val, 10);
-            if (val > Math.min(price, current) && val <= Math.max(price, current)) {
-                let value = (price * amount - val * amount) / (current - val);
+        let _price = Number(price)
+        let _current = Number(current)
+
+        if (!isNaN(val) && _price > 0 && amount > 0 && _current > 0) {
+            let _val = parseFloat(val, 10);
+            if (_val > Math.min(_price, _current) && _val <= Math.max(_price, _current)) {
+                let value = (_price * amount - _val * amount) / (_current - _val);
                 setAvgAmount(-1 * Math.round(value));
             }
-            setTmpAvg(parseFloat(val, 10));
+            setTmpAvg(val);
         }
     }
 
 //Рефрешер
     const handleRefresh = () => {
         setRefresh(true);
-        setPrice(0);
+        setPrice('');
         setAmount(0);
-        setCurrent(0);
+        setCurrent('');
         setAvgAmount(0);
         setAvg(calculate_avg());
         setEditAvg(false);
         setRefresh(false);
     }
 
+    const total = () => {
+        let _price = Number(price);
+        let _current = Number(current);
+        if (_price && amount && avg_amount && _current) {
+            return (_price * amount + avg_amount * _current).toFixed(2).toString();
+        } else {
+            if (_price && amount)
+                return (_price * amount).toFixed(2).toString();
+            else return '-/-';
+        }
+    }
 
     return (
     <ScrollView
@@ -102,16 +112,14 @@ export const Main = (props) => {
 
             <View>
                 <Text style={styles.total_text_header}>Total position in share:</Text>
-                <Text style={styles.total_text}>{
-                    price && amount && avg_amount && current ? (price * amount + avg_amount * current).toFixed(2) : (price && amount ? (price * amount).toFixed(2) : '-/-')
-                }</Text>
+                <Text style={styles.total_text}>{total()}</Text>
             </View>
 
             <View style={styles.previous_data}>
                 <TextInput
                     style={styles.price}
                     placeholder='price'
-                    value={price > 0 ? price.toString() : ''}
+                    value={price}
                     onChangeText={(val) => set_number(val, 'price')}
                     keyboardType={'phone-pad'}
                 />
@@ -129,14 +137,15 @@ export const Main = (props) => {
             <View>
                 <TextInput
                 style={styles.avg}
-                value={edit_avg ? (tmp_avg > 0 ? tmp_avg.toString() : '') : (avg > 0 ? avg.toString() : '-/-')}
+                value={edit_avg ? tmp_avg : (avg == '' ? '-/-' : avg)}
                 onChangeText={(val) => set_avg(val)}
                 onFocus={() => setEditAvg(true)}
                 onBlur={() => {
                     setEditAvg(false);
-                    setTmpAvg(0);
-                }}
-                editable={amount && price && current ? true : false}
+                    setTmpAvg('');
+                }} //EditMode - при нажатие на поле "среднего" переходим к редактированию значения tmp_avg, которое, если будет валидно,
+                //затем заменит avg
+                editable={amount && Number(price) && Number(current) ? true : false}
                 keyboardType={'phone-pad'}
                 />
             </View>
@@ -146,13 +155,13 @@ export const Main = (props) => {
         <View style={styles.avg_block}>
 
                 <Text style={styles.it_will_cost}>
-                    It will cost you: {avg_amount && current ? (avg_amount * current).toFixed(2).toString() : '-/-'}
+                    It will cost you: {avg_amount && Number(current) ? (avg_amount * Number(current)).toFixed(2).toString() : '-/-'}
                 </Text>
 
                 <View style={styles.current}>
 
                     <TextInput
-                        value={current > 0 ? current.toString() : ''}
+                        value={current}
                         style={styles.price}
                         onChangeText={(val) => set_number(val, 'current')}
                         keyboardType={'phone-pad'}
@@ -175,11 +184,11 @@ export const Main = (props) => {
                 <Slider
                 style={styles.slider_style}
                 minimumValue={0}
-                maximumValue={current < 10 ? 100 : 50}
+                maximumValue={Number(current) < 10 ? 100 : 50}
                 minimumTrackTintColor={'darkblue'}
                 maximumTrackTintColor={'green'}
                 thumbTintColor={'darkblue'}
-                step={current < 10 ? 2 :1}
+                step={Number(current) < 10 ? 2 :1}
                 value={avg_amount}
                 onValueChange={(val) => set_number(val, 'avg_amount')}
                 />
